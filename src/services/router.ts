@@ -46,7 +46,9 @@ export class RouterEvent extends Event implements RouterEventPayload {
   data?: any;
   constructor(to: string, data?: any) {
     super(RouterEvent.Type);
-    this.to = (to ?? "/").toString();
+    let path = (to ?? "/").toString();
+    if (!path.startsWith("/") && !path.startsWith(".")) path = "/" + path; // new URL() assumes current but we want root
+    this.to = new URL(path, location.origin + location.pathname + "/").pathname;
     this.data = data;
   }
 }
@@ -90,10 +92,9 @@ function findComponent(routes: CleanRoute[], config: RouterConfig, setJsx: Dispa
 
   if (typeof route.if === "function" && !route.if(props, path)) {
     const elseFn = typeof route.else === "function" ? route.else : typeof config.else === "function" ? config.else : undefined;
-    if (elseFn) {
-      const retval = elseFn(props, path);
-      if (retval && ["string", "object"].includes(typeof retval)) return setJsx(retval);
-    }
+    if (!elseFn) return;
+    const retval = elseFn(props, path);
+    if (retval && ["string", "object"].includes(typeof retval)) return setJsx(retval);
     return;
   }
 
@@ -134,6 +135,7 @@ export interface RouterConfig {
   routes: Route[];
   loading?: ReactComponent | ReactNode;
   else?: ReactComponent | ReactNode;
+  initialPath?: string;
 }
 
 export function Router(config: RouterConfig): ReactNode {
@@ -145,9 +147,9 @@ export function Router(config: RouterConfig): ReactNode {
     RouterEvent.Target.removeEventListener(RouterEvent.Type, previous.current);
     previous.current = ev => findComponent(cleanRoutes, config, setJsx, ev as RouterEvent);
     RouterEvent.Target.addEventListener(RouterEvent.Type, previous.current);
-  }, [cleanRoutes]);
+  }, [cleanRoutes, config.loading, config.else]);
 
-  useMemo(() => findComponent(cleanRoutes, config, setJsx, { to: location.pathname }), []); // initialize
+  useMemo(() => goto(config.initialPath ?? location.pathname), []); // initialize
 
   return jsx;
 }

@@ -4,6 +4,8 @@
 
 Features
 
+- supports relative urls with `./` and `../`
+- unprefixed urls assume `/` root not `./` current as it is the most common case
 - no magic "router outlet"; routed components appear as the children of the router component
 - lazy-loading components
 - synchronous unless lazy-loading, for better animations
@@ -22,6 +24,8 @@ Features
 Nested routers. Nested routes.
 
 Test animations.
+
+delay Loading display for a tick in case remote data is in an async cache
 
 ### Discarded Features
 
