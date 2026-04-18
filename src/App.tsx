@@ -8,10 +8,7 @@ import { Loading } from "./components/Loading";
 import { Params } from "./components/Params";
 import "./services/router";
 import { goto, type Route, Router } from "./services/router";
-
-const wait = (ms?: number) => new Promise(r => setTimeout(r, ms || 1000));
-
-//////////////
+import { wait } from "./util";
 
 const routes: Route[] = [
   { path: "/", component: () => <div>Hello!</div> },
@@ -116,6 +113,8 @@ const routes: Route[] = [
         .then(res => ({ invoices: res })),
   },
 
+  { path: "cascade", loadComponent: () => import("./components/CascadeLoad") },
+
   {
     path: "customer",
     component: () => (
@@ -160,6 +159,7 @@ export function App() {
         <button onClick={() => goto("if")}>if</button>
         <button onClick={() => goto("badrole")}>bad role: redirect in else</button>
         <button onClick={() => goto("loaddata/5686")}>loaddata</button>
+        <button onClick={() => goto("cascade")}>cascade load</button>
       </div>
       <Router routes={routes} loading={Loading} else={() => "Route not allowed"} />
     </main>
