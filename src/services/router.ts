@@ -15,7 +15,7 @@ interface ImportModule extends Object {
 export interface Route {
   path: string;
   /** skeletons slightly differ from loading spinners because each are tailored to match the screen they're loading into */
-  skeleton?: ReactComponent | ReactNode;
+  loading?: ReactComponent | ReactNode;
   /** if a boolean function is provided, and returns falsy, route change will be prevented and .else called if provided. Some data is provided for convenience */
   if?: (props: ReactComponentProps, gotoPath: string) => boolean;
   /** only called if .if was provided and returned falsy. If something displayable was returned it will be displayed. or, goto() call is recommended */
@@ -91,11 +91,10 @@ function findComponent(routes: CleanRoute[], config: RouterConfig, setJsx: Dispa
   }
 
   if (typeof route.if === "function" && !route.if(props, path)) {
-    const elseFn = typeof route.else === "function" ? route.else : typeof config.else === "function" ? config.else : undefined;
+    const elseFn = typeof route.else === "function" ? route.else : typeof config.else === "function" ? config.else : void 0;
     if (!elseFn) return;
-    const retval = elseFn(props, path);
-    if (retval && ["string", "object"].includes(typeof retval)) return setJsx(retval);
-    return;
+    const disallowedJsx = elseFn(props, path);
+    return disallowedJsx && ["string", "object"].includes(typeof disallowedJsx) ? setJsx(disallowedJsx) : void 0;
   }
 
   // Setup is done. Go. //
@@ -111,7 +110,7 @@ function findComponent(routes: CleanRoute[], config: RouterConfig, setJsx: Dispa
   if (route.component && !(gathering instanceof Promise)) return setJsx(route.component(props));
 
   const importing = route.component
-    ? undefined
+    ? void 0
     : route.loadComponent!().then((componentOrModule: any) => {
         route.component =
           componentOrModule[Symbol.toStringTag] === "Module"
@@ -119,14 +118,16 @@ function findComponent(routes: CleanRoute[], config: RouterConfig, setJsx: Dispa
             : componentOrModule;
       });
 
+  let loadingIsDone = false;
   Promise.allSettled([gathering, importing]).then(() => {
-    // prevent stale if nav'ed again beore promise finished
+    loadingIsDone = true;
     if (location.pathname === pathToUrl(path).pathname) setJsx(route.component!(props));
   });
 
-  const skeleton = route.skeleton ?? config.loading;
-  if (typeof skeleton !== "undefined") return setJsx(typeof skeleton === "function" ? skeleton(props) : skeleton);
-  return void 0; // don't change existing display with setJsx
+  const skeleton = route.loading ?? config.loading;
+  if (typeof skeleton === "undefined") return; // don't change existing display with setJsx
+
+  setTimeout(() => loadingIsDone || setJsx(typeof skeleton === "function" ? skeleton(props) : skeleton));
 }
 
 // Router ////////

@@ -67,7 +67,7 @@ const routes: Route[] = [
 
   {
     path: "skeleton/:id",
-    skeleton: () => "Alternate loading animation",
+    loading: () => "Alternate loading animation",
     loadComponent: () => import("./components/D").then(({ default: D }) => D),
   },
 
@@ -156,10 +156,10 @@ export function App() {
         <button onClick={() => goto("parameters/5/foo")}>With Param 5 "foo"</button>
         <button onClick={() => goto("/module-d")}>module autoexport D</button>
         <button onClick={() => goto("/module-c")}>module autoexport C</button>
-        <button onClick={() => goto("/maybe/69")}>if else</button>
-        <button onClick={() => goto("/if")}>if</button>
-        <button onClick={() => goto("/badrole")}>bad role: redirect in else</button>
-        <button onClick={() => goto("/loaddata/5686")}>loaddata</button>
+        <button onClick={() => goto("maybe/69")}>if else</button>
+        <button onClick={() => goto("if")}>if</button>
+        <button onClick={() => goto("badrole")}>bad role: redirect in else</button>
+        <button onClick={() => goto("loaddata/5686")}>loaddata</button>
       </div>
       <Router routes={routes} loading={Loading} else={() => "Route not allowed"} />
     </main>
