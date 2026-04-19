@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { createElement, useMemo, useRef, useState, type FunctionComponent, type JSX, type ReactNode } from "react";
 
 export type ReactComponentProps = Record<string, any> & any;
 export type UrlParamProps = Record<string, string>;
@@ -7,7 +7,7 @@ export interface ReactComponent {
   (props: ReactComponentProps): ReactNode;
 }
 
-interface ImportModule extends Object {
+interface ImportModuleWithDefaultExport extends Object {
   [Symbol.toStringTag]?: "Module";
   default?: ReactComponent;
 }
@@ -20,8 +20,11 @@ export interface Route {
   if?: (props: ReactComponentProps, gotoPath: string) => boolean;
   /** only called if .if was provided and returned falsy. If something displayable was returned it will be displayed. or, goto() call is recommended */
   else?: (props: ReactComponentProps, gotoPath: string) => ReactNode | undefined | void;
-  loadComponent?: () => Promise<ReactComponent | ImportModule>;
+  /** lazy-loads the component. Ignored if .component has value */
+  loadComponent?: () => Promise<ReactComponent | ImportModuleWithDefaultExport>;
+  /** eager-loads the component to show for this path */
   component?: ReactComponent;
+  /** loads the data for the component. can return props immediately or in a promise. Recieves teh component's eventual props for convenience */
   loadData?: (props: ReactComponentProps) => ReactComponentProps | Promise<ReactComponentProps>;
 }
 
@@ -72,17 +75,19 @@ const mergeProps = (asyncProps: any, props: ReactComponentProps, path: string) =
 
 // find matching component //////
 
-function findComponent(routes: CleanRoute[], config: RouterConfig, setJsx: Dispatch<SetStateAction<ReactNode>>, ev: RouterEventPayload) {
+function findComponent(routes: CleanRoute[], config: RouterConfig, setJsx: (x: [FunctionComponent, ReactComponentProps?]) => void, ev: RouterEventPayload) {
   const path = ev?.to;
   const dest = onlyTheCleanPath(path);
 
   const matchedRoutes = routes.filter(r => dest.length == r.segments.length && dest.every((c, i) => c == r.segments[i] || r.segments[i].startsWith(":")));
-  if (matchedRoutes.length < 1) return setJsx(`${err}No route definitions for /${dest.join("/")}`);
+  if (matchedRoutes.length < 1) return setJsx([() => `${err}No route definitions for /${dest.join("/")}`]);
   if (matchedRoutes.length > 1)
-    return setJsx(`${err}Multiple route definitions for /${dest.join("/")}:\n${matchedRoutes.map(o => `#${routes.indexOf(o)}  /${o.segments.join("/")}\n`)}`);
+    return setJsx([
+      () => `${err}Multiple route definitions for /${dest.join("/")}:\n${matchedRoutes.map(o => `#${routes.indexOf(o)}  /${o.segments.join("/")}\n`)}`,
+    ]);
 
   const route = matchedRoutes[0];
-  if (!route || (!route.component && !route.loadComponent)) return setJsx(`${err}No component for route /${dest}`);
+  if (!route || (!route.component && !route.loadComponent)) return setJsx([() => `${err}No component for route /${dest}`]);
 
   const props: Record<string, string | number> = { data: ev?.data };
   for (let i = 0; i < dest.length; i++) {
@@ -94,7 +99,7 @@ function findComponent(routes: CleanRoute[], config: RouterConfig, setJsx: Dispa
     const elseFn = typeof route.else === "function" ? route.else : typeof config.else === "function" ? config.else : void 0;
     if (!elseFn) return;
     const disallowedJsx = elseFn(props, path);
-    return disallowedJsx && ["string", "object"].includes(typeof disallowedJsx) ? setJsx(disallowedJsx) : void 0;
+    return disallowedJsx && ["string", "object"].includes(typeof disallowedJsx) ? setJsx([() => disallowedJsx]) : void 0;
   }
 
   // Setup is done. Go. //
@@ -107,7 +112,7 @@ function findComponent(routes: CleanRoute[], config: RouterConfig, setJsx: Dispa
     else mergeProps(gathering, props, route.path);
   }
 
-  if (route.component && !(gathering instanceof Promise)) return setJsx(route.component(props));
+  if (route.component && !(gathering instanceof Promise)) return setJsx([route.component, props]);
 
   const importing = route.component
     ? void 0
@@ -121,13 +126,13 @@ function findComponent(routes: CleanRoute[], config: RouterConfig, setJsx: Dispa
   let loadingIsDone = false;
   Promise.allSettled([gathering, importing]).then(() => {
     loadingIsDone = true;
-    if (location.pathname === pathToUrl(path).pathname) setJsx(route.component!(props));
+    if (location.pathname === pathToUrl(path).pathname) return setJsx([route.component!, props]);
   });
 
   const skeleton = route.loading ?? config.loading;
   if (typeof skeleton === "undefined") return; // don't change existing display with setJsx
 
-  setTimeout(() => loadingIsDone || setJsx(typeof skeleton === "function" ? skeleton(props) : skeleton));
+  setTimeout(() => loadingIsDone || setJsx(typeof skeleton === "function" ? [skeleton, props] : [() => skeleton]));
 }
 
 // Router ////////
@@ -136,21 +141,20 @@ export interface RouterConfig {
   routes: Route[];
   loading?: ReactComponent | ReactNode;
   else?: ReactComponent | ReactNode;
-  initialPath?: string;
 }
 
-export function Router(config: RouterConfig): ReactNode {
+export function Router(config: RouterConfig): JSX.Element {
   const cleanRoutes = useMemo(() => config.routes.map<CleanRoute>(r => ({ ...r, segments: onlyTheCleanPath(r.path) })), [config.routes]);
-  const [jsx, setJsx] = useState<ReactNode>("");
+  const [component, setComponent] = useState<[FunctionComponent, ReactComponentProps?]>([() => ""]);
 
   const previous = useRef<EventListener>(_ => _);
   useMemo(() => {
     RouterEvent.Target.removeEventListener(RouterEvent.Type, previous.current);
-    previous.current = ev => findComponent(cleanRoutes, config, setJsx, ev as RouterEvent);
+    previous.current = ev => findComponent(cleanRoutes, config, setComponent, ev as RouterEvent);
     RouterEvent.Target.addEventListener(RouterEvent.Type, previous.current);
   }, [cleanRoutes, config.loading, config.else]);
 
-  useMemo(() => goto(config.initialPath ?? location.pathname), []); // initialize
+  useMemo(() => goto(location.pathname), []); // initialize
 
-  return jsx;
+  return createElement(component[0], component[1] || {}); // create new hooks context
 }

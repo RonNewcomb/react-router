@@ -130,7 +130,7 @@ const routes: Route[] = [
             },
           },
         ]}
-      ></Router>
+      />
     ),
   },
 ];
