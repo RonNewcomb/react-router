@@ -18,14 +18,13 @@ Features
 - if lazy-loading modules with a default export, no need to specify the component name
 - route config errors are explicit and appear obviously; no need to dig around in console.log with blank screens
 - no useEffect!
+- delays Loading displays for a macrotick in case remote data is in an async cache; prevents flashing "loading" for a tick
 
 #### TODO
 
 Nested routers. Nested routes.
 
 Test animations.
-
-delay Loading display for a tick in case remote data is in an async cache
 
 ### Discarded Features
 
