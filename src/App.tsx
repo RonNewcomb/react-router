@@ -114,6 +114,7 @@ const routes: Route[] = [
   },
 
   { path: "cascade", loadComponent: () => import("./components/CascadeLoad") },
+  { path: "cascade/:id", loadComponent: () => import("./components/CascadeLoad"), loadData: props => wait(1000).then(_ => props) },
 
   {
     path: "customer",
@@ -160,6 +161,7 @@ export function App() {
         <button onClick={() => goto("badrole")}>bad role: redirect in else</button>
         <button onClick={() => goto("loaddata/5686")}>loaddata</button>
         <button onClick={() => goto("cascade")}>cascade load</button>
+        <button onClick={() => goto("cascade/" + +new Date())}>cascade load ##</button>
       </div>
       <Router routes={routes} loading={Loading} else={() => "Route not allowed"} />
     </main>
