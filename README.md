@@ -1,8 +1,6 @@
 # Renewcomb Router for React
 
-### Observations
-
-Features
+### Features
 
 - supports relative urls with `./` and `../`
 - unprefixed urls assume `/` root not `./` current as it is the most common case
@@ -20,29 +18,27 @@ Features
 - no useEffect!
 - delays Loading displays for a macrotick in case remote data is in an async cache; prevents flashing "loading" for a tick
 
-#### TODO
+### Coming Features
 
-Nested routers. Nested routes.
-
-Test animations.
+- keeping previous route for X milliseconds for animation transition.
+- Test animations.
+- Children routes.
+- Wildcard routes.
+- Nested routers.
+- Partial router config; lazy-load more router config.
 
 ### Discarded Features
 
-Can't just have the `component:` be a string for dynamic `import()` because the bundler cannot fix the path.
+- Can't just have the `component:` be a string for dynamic `import()` because the bundler cannot fix the path.
 
-Also, routes definition just being a key-value object was messier than expected when using deep routes with parameters. Too much punctuation.
+- Routes definition just being a key-value object was messier than expected when using deep routes with parameters. Too much punctuation.
 
-### Break it out into pieces
+### Broken out into pieces
 
-1. the url reader and changer, the `goto` function. Relative goto.
+1. the url reader and changer, the `goto` function.
 1. the tabset-without-tabstrip.
 1. the component loader, data loader, and promise problems
 1. the isloading screen for unresolved promise phase.
 1. the animation interstitial phase.
-1. the route config that connects URL to Component , whose `goto` changes "tab"
+1. the route config that connects URL to Component, whose `goto` changes "tab"
 1. the exiting tab panel to be kept until animation finishes.
-1. the router config is always partial; parts are lazy-loaded and added at runtime
-
-When the `goto` aims to a level deeper than the router config... there's another router?
-
-When gotoing a path with ?query params but the same path we're already on, do we still nav? I guess so....
